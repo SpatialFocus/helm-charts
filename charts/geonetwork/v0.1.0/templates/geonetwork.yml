@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gn-chart.fullname" . }}-geonetwork
+  labels:
+  {{- include "gn-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "gn-chart.fullname" . }}-geonetwork
+    {{- include "gn-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "gn-chart.fullname" . }}-geonetwork
+      {{- include "gn-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: ES_HOST
+          value: {{ include "gn-chart.fullname" . }}-elasticsearch # {{ quote .Values.geonetwork.env.esHost }}
+        - name: ES_PORT
+          value: "9200" # {{ quote .Values.geonetwork.env.esPort }}
+        - name: ES_PROTOCOL
+          value: "http" # {{ quote .Values.geonetwork.env.esProtocol }}
+        - name: GEONETWORK_DB_HOST
+          value: {{ quote .Values.geonetwork.env.geonetworkDbHost }}
+        - name: GEONETWORK_DB_NAME
+          value: {{ quote .Values.geonetwork.env.geonetworkDbName }}
+
+        {{- if .Values.geonetwork.env.geonetworkDbCredentialsFromSecret }}
+        - name: GEONETWORK_DB_USERNAME
+          # value: {{ quote .Values.geonetwork.env.geonetworkDbUsername }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ quote .Values.geonetwork.env.geonetworkDbCredentialsSecretName }}
+              key: username
+        {{- else }}
+        - name: GEONETWORK_DB_USERNAME
+          value: {{ .Values.geonetwork.env.geonetworkDbUsername | quote }}
+        {{- end }}
+
+        {{- if .Values.geonetwork.env.geonetworkDbCredentialsFromSecret }}
+        - name: GEONETWORK_DB_PASSWORD
+          # value: {{ quote .Values.geonetwork.env.geonetworkDbPassword }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ quote .Values.geonetwork.env.geonetworkDbCredentialsSecretName }}
+              key: password
+        {{- else }}
+        - name: GEONETWORK_DB_PASSWORD
+          value: {{ .Values.geonetwork.env.geonetworkDbPassword | quote }}
+        {{- end }}
+
+        - name: GEONETWORK_DB_PORT
+          value: {{ quote .Values.geonetwork.env.geonetworkDbPort }}
+        - name: GEONETWORK_DB_TYPE
+          value: {{ quote .Values.geonetwork.env.geonetworkDbType }}
+        - name: JAVA_OPTS
+          value: {{ quote .Values.geonetwork.env.javaOpts }}
+        - name: KB_URL
+          value: "http://{{ include "gn-chart.fullname" . }}-kibana:5601"
+        image: {{ .Values.geonetwork.image.registry }}/{{ .Values.geonetwork.image.repository }}:{{ .Values.geonetwork.image.tag | default .Chart.AppVersion }}
+        name: geonetwork
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+      {{- if .Values.geonetwork.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.geonetwork.imagePullSecret }}
+      {{- end }}
+      volumes:
+      - name: geonetwork-claim
+        persistentVolumeClaim:
+          claimName: {{ include "gn-chart.fullname" . }}-geonetwork-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gn-chart.fullname" . }}-geonetwork
+  labels:
+  {{- include "gn-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "gn-chart.fullname" . }}-geonetwork
+  {{- include "gn-chart.selectorLabels" . | nindent 4 }}
+  ports:
+	{{- .Values.geonetwork.ports | toYaml | nindent 2 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gn-chart.fullname" . }}-geonetwork-claim
+  labels:
+  {{- include "gn-chart.labels" . | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.geonetwork.storageRequest | quote }}
+---
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "gn-chart.fullname" . }}-geonetwork
+  labels:
+    app: {{ include "gn-chart.fullname" . }}-geonetwork
+  {{- include "gn-chart.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      - backend:
+          service:
+            name: '{{ include "gn-chart.fullname" . }}-geonetwork'
+            port:
+              number: 80
+        path: /geonetwork
+        pathType: Prefix
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.ingress.host }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+{{- end }}

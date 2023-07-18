@@ -1,0 +1,48 @@
+geonetwork:
+  image:
+    registry: docker.io
+    repository: geonetwork
+    tag: latest
+  imagePullSecret:
+  ports:
+  - port: 80
+    targetPort: 8080
+  storageRequest: 100Mi
+  env:
+    geonetworkDbType: postgres
+    geonetworkDbHost: postgres
+    geonetworkDbPort: "5432"
+    geonetworkDbName: geonetwork
+
+    # Either username/password or secret name
+    geonetworkDbCredentialsFromSecret: false
+    geonetworkDbUsername: postgres
+    geonetworkDbPassword: postgres
+    geonetworkDbCredentialsSecretName:
+
+    javaOpts: |
+      -Dorg.eclipse.jetty.annotations.AnnotationParser.LEVEL=OFF -Djava.security.egd=file:/dev/./urandom -Djava.awt.headless=true -Xms512M -Xss512M -Xmx2G -XX:+UseConcMarkSweepGC -Dgeonetwork.resources.dir=/catalogue-data/resources -Dgeonetwork.data.dir=/catalogue-data -Dgeonetwork.codeList.dir=/var/lib/jetty/webapps/geonetwork/WEB-INF/data/config/codelist -Dgeonetwork.schema.dir=/var/lib/jetty/webapps/geonetwork/WEB-INF/data/config/schema_plugins
+
+elasticsearch:
+  image:
+    repository: elasticsearch
+    tag: 7.9.2
+  storageRequest: 100Mi
+
+kibana:
+  image:
+    repository: kibana
+    tag: 7.9.2
+  env:
+    serverBasepath: /geonetwork/dashboards
+    serverName: kibana
+    serverRewritebasepath: "false"
+    xpackMonitoringUiContainerElasticsearchEnabled: "true"
+
+ingress:
+  enabled: false
+  host: geonetwork.hostname
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: geonetwork-tls

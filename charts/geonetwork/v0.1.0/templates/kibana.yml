@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gn-chart.fullname" . }}-kibana
+  labels:
+  {{- include "gn-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "gn-chart.fullname" . }}-kibana
+    {{- include "gn-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "gn-chart.fullname" . }}-kibana
+      {{- include "gn-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://{{ include "gn-chart.fullname" . }}-elasticsearch:9200"
+        - name: KIBANA_INDEX
+          value: .dashboards
+        - name: SERVER_BASEPATH
+          value: {{ quote .Values.kibana.env.serverBasepath }}
+        - name: SERVER_NAME
+          value: {{ quote .Values.kibana.env.serverName }}
+        - name: SERVER_REWRITEBASEPATH
+          value: {{ quote .Values.kibana.env.serverRewritebasepath }}
+        - name: XPACK_MONITORING_UI_CONTAINER_ELASTICSEARCH_ENABLED
+          value: {{ quote .Values.kibana.env.xpackMonitoringUiContainerElasticsearchEnabled }}
+        image: {{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag | default .Chart.AppVersion }}
+        name: kibana
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gn-chart.fullname" . }}-kibana
+  labels:
+  {{- include "gn-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "gn-chart.fullname" . }}-kibana
+  {{- include "gn-chart.selectorLabels" . | nindent 4 }}
+  ports:
+  - port: 5601
+    targetPort: 5601
