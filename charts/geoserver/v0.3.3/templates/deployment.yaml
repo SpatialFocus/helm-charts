@@ -118,6 +118,10 @@ spec:
       {{- with .Values.extraPodSpec }}
       {{- tpl . $ | nindent 6 }}
       {{- end }}
+      {{- if .Values.image.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.image.imagePullSecret }}
+      {{- end }}
       volumes:
         {{- with .Values.extraVolume }}
         {{- (tpl . $) | nindent 8 }}
