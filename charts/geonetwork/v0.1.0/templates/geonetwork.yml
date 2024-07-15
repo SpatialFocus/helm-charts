@@ -71,6 +71,11 @@ spec:
           requests:
             cpu: 500m
             memory: 1Gi
+        volumeMounts:
+          {{- if .Values.geonetwork.persistence.geonetworkDataDir.enabled }}
+          - name: geonetwork-claim
+            mountPath: {{ .Values.geonetwork.persistence.geonetworkDataDir.mountPath }}
+          {{- end }}
       {{- if .Values.geonetwork.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.geonetwork.imagePullSecret }}
